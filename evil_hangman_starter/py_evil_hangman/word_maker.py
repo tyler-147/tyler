@@ -75,27 +75,46 @@ class WordMakerAI():
         self.verbose = verbose
 
         # Use this code if you like.
-        """
-        with open(words_file) as file_obj:
-            for line in file_obj:
-                word = line.strip()
-                # Use word
-        """
+        # generate empty list made of lists that will be appended for each element of the dictionary
+        max_len = 0
+        with open(
+                words_file) as wordfile:  # this run through the text file finds the max length of the word in the list to create the empty list
+            for line in wordfile:
+                current_len = len(line.strip())
+                if current_len > max_len:
+                    max_len = current_len  # overwrite max_length when we find a larger one
+        dict_sorted = [[] for i in range(max_len)]  # create empty list of lists
 
-        pass # TODO: implement this
+        # iterate through the dictionary, appending each word to the appropriate list sorted by length (indexed by len(word) - 1)
+        with open(words_file) as wordfile:
+            for line in wordfile:
+                current_len = len(line.strip())
+                dict_sorted[current_len - 1].append(line.strip())
+
+        # create two copies of sorted dictionary, one that will not be changed and one that will be narrowed down as the guesses are made
+        self.dictionary = dict_sorted
+        self.curr_dict = dict_sorted
 
     def reset(self, word_length: int) -> None:
         # This function starts a new game with a word length of `word_length`. This will always be called before guess() or get_valid_word() are called.
         # You should try to make this function should be O(1). That is, you shouldn't have to process over the entire dictionary here (find somewhere else to preprocess it)
         # Your AI code should not call input() or print().
 
-        pass # TODO: implement this
+        self.curr_dict = self.dictionary[word_length - 1] #reset the current dictionary to the set of words of length word_length
 
     def get_valid_word(self) -> str:
         # Get a valid word in the active dictionary, to return when you lose
         # Can return any word, as long as it satisfies the previous guesses
 
-        pass # TODO: implement this
+        # Get the first word in the set of the remaining words to return if a valid word is asked for
+        valid_word = self.curr_dict[0]
+        if isinstance(valid_word,
+                      str):  # this is to ensure the answer is a string? the else condition shouldn't ever come up
+            told_you_so = valid_word
+        else:
+            told_you_so = 'This should never show up but if it does, something has gone very wrong with processing the dictionary'
+
+        return told_you_so
 
     def get_amount_of_valid_words(self) -> int:
         # This function gets the total amount of possible words "remaining" (i.e., that satisfy all the guesses since self.reset was last called)
@@ -104,7 +123,10 @@ class WordMakerAI():
         # via the provided test cases.
         # You can see this number by running with the verbose flag, i.e. `python3 evil_hangman.py --verbose`
 
-        pass # TODO: implement this
+        # Get length of current dictionary
+        len_remaining = len(self.curr_dict)
+
+        return len_remaining
 
     def get_letter_positions_in_word(self, word: str, guess_letter: str) -> tuple[int, ...]:
         # This function should return the positions of guess_letter in word. For instance:
@@ -112,10 +134,13 @@ class WordMakerAI():
         #  be sorted ascending and 0-indexed.
         # You can assume that word is lowercase with at least length 1 and guess_letter has exactly length 1 and is a lowercase a-z letter.
 
-        # Note: to convert from a list to a tuple, call tuple() on the list. For instance:
-        result = []
-        # TODO: add letter positions to result
-        return tuple(result)
+        #iterate over letters in word and append index if it does
+        letter_index = []
+        for i in range(len(word)):
+            if word[i] == guess_letter:
+                letter_index.append(i)
+
+        return tuple(letter_index)
         
 
     def guess(self, guess_letter) -> list[int]:
@@ -142,5 +167,37 @@ class WordMakerAI():
 
         # The order of the returned list should be sorted. You can assume that 'guess_letter' has not been seen yet since the last call to self.reset(),
         #  and that guess_letter has len of 1 and is a lowercase a-z letter.
-        
-        pass # TODO: implement this
+
+        # run through the current dictionary and save all the positions to a list
+        all_pos = []
+        for i in self.curr_dict:
+            all_pos.append(self.get_letter_positions_in_word(i, guess_letter))
+
+        # count how many times each unique index pops up
+        uniq_pos = list(set(all_pos))
+        max_pos = ()  # set the initial max position to override
+        max_num = 0
+        for i in range(len(uniq_pos)):
+
+            num_pos = all_pos.count(uniq_pos[i])  # count how many times each position pops up
+
+            # decide if num_pos is larger than previous and handle the edge/match cases
+            if max_num < num_pos:
+                max_pos = uniq_pos[i]
+                max_num = num_pos
+            elif num_pos == max_num:  # the default assumption is to keep the current max_pos the same unless the new one is empty or shorter. For simplicity, I will always just keep the current max_pos if there are the same number of occurrences in the set
+                if not uniq_pos[i] or len(uniq_pos[i]) < len(max_pos):
+                    max_pos = uniq_pos[
+                        i]  # update the position if the new one is empty, but the number doesn't need to be updated. If the old one is empty, a later if statemen will take care of this
+
+        # update the curr_dict to be the ones with the remaining letters
+        # create empty curr_dict to fill in
+        rep_curr_dict = []
+        for i in range(len(all_pos)):
+            if all_pos[i] == max_pos:
+                rep_curr_dict.append(self.curr_dict[i])
+
+        # replace the curr_dict with the new curr_dict
+        self.curr_dict = rep_curr_dict
+
+        return list(max_pos)
