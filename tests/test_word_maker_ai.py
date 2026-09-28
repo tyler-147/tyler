@@ -1,5 +1,5 @@
 from py_evil_hangman.word_maker import WordMakerAI
-import pytest
+
 
 # To test, you will probably find it easiest to make your own simplified dictionary.txt.
 
